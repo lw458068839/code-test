@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>记事本</title>
+  <link rel="icon" href="static/image/bitbug_favicon.ico"/>
+  <link rel="stylesheet" href="static/css/bootstrap.css">
+  <style>
+      body {
+          font-size: 20px;
+          margin: 0px;
+          padding: 10px;
+          color: #646f78;
+      }
+      #main-content {
+          margin-left: 30%;
+          margin-right: 30%;
+          margin-top: 5%;
+      }
+
+      input {
+          display: inline-block;
+          user-select: none;
+          cursor: initial;
+      }
+
+      body .menu .form-inline div {
+          margin-bottom: 5px;
+      }
+
+      body .menu .form-inline .counter input {
+          width: 167px;
+          text-align: center;
+      }
+
+      .can-check{
+          user-select: none;
+          cursor: pointer;
+          color: #2f0099;
+      }
+      .disable-check{
+          user-select: none;
+          cursor: default;
+          color: #818c93;
+      }
+      h2{
+          user-select: none;
+          color: #541ecd;
+      }
+      .space {
+          margin-left: 30px;
+          margin-right: 5px;
+      }
+
+  </style>
+</head>
+
+<body>
+<div id='main-content'>
+  <div id="app">
+    <h2 style="margin-left: 30px;display: inline-block">todo</h2>
+    <span style="margin-left: 100px" class="glyphicon glyphicon-plus can-check" v-on:click="openAddModal(0)"></span>
+    <div v-for="item in todo_list">
+      <child-component :task_data="item"></child-component>
+    </div>
+    <div></div>
+    <h2 style="margin-left: 30px;display: inline-block">complate</h2>
+    <div v-for="item in complate_list">
+      <child-component-complate :task_data="item"></child-component-complate>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="myModal_edit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="myModalLabel_edit">请输入新的name名称</h4>
+          </div>
+          <div class="modal-body form-group">
+            <input class="form-control" type="text" v-model="editItem.name">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal" id="closeModal_edit">关闭</button>
+            <button type="button" class="btn btn-primary" v-on:click="editTask(editItem,editItem.name)"
+                    data-dismiss="modal" id="saveChange_edit">保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="myModal_add" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="myModalLabel_add">新增项目</h4>
+          </div>
+          <div class="modal-body form-group">
+            <input type="text" class="form-control" v-model="addInput">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal" class="closeModal_add">关闭</button>
+            <button type="button" class="btn btn-primary" v-on:click="addTask(addItem,addInput)" data-dismiss="modal"
+                    class="saveChange_add">保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+
+<script src="static/js/vue.js"></script>
+<script src="static/js/jquery.js"></script>
+<script src="static/js/bootstrap.js"></script>
+<script src="/static/js/axios.js"></script>
+<script>
+  Vue.component('child-component', {
+    name: 'child-component',
+    delimiters: ['{[', ']}'],
+    data: function () {
+      return {showSons: true}
+    },
+    props: {
+      task_data: {
+        type: Object,
+        default: function () {
+          return {"name": "", sons: [],"nid":null}
+        }
+      },
+      count: {
+        type: Number,
+        default: 0,
+      },
+    },
+    methods: {
+      spaceCtrl: function (count) {
+        var s = ""
+        for (var i = 0; i <= count; i++)
+          s += '&nbsp&nbsp&nbsp&nbsp&nbsp'
+        return s
+      },
+      openEditModal: function (item) {
+        $('#myModal_edit').modal('show');
+        app.$data.editItem = item
+        console.log(item.name)
+      },
+      openAddModal: function (item) {
+        $('#myModal_add').modal('show');
+        app.$data.addItem = item
+        console.log(item.name)
+      },
+      doneTask: function (item) {
+        if(item.sons.length==0) {
+          if (item.done != true){
+            item.done = true
+            app.update_task(item.nid, {'done': true})
+          }
+
+        }
+      },
+    },
+    template: `\
+      <div class="child" >
+        <div>
+          <span v-html="spaceCtrl(count)"></span>
+          <span
+            v-if="task_data.sons.length>1"
+            class="glyphicon can-check"
+            :class="{'glyphicon-menu-down':showSons,'glyphicon-menu-right':!showSons}"
+            v-on:click="showSons=!showSons" >
+          </span>
+          <span v-else>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+          <span class="glyphicon" :class="{'glyphicon-check':task_data.done,
+            'glyphicon-unchecked':!task_data.done,'can-check':task_data.done | task_data.sons.length==0,
+            'disable-check':!task_data.done & task_data.sons.length>0}" v-on:click="doneTask(task_data)"></span>
+          <span class=""></span>
+            {[task_data.name]}
+          <span class="space glyphicon glyphicon-edit can-check" v-on:click="openEditModal(task_data)"></span>
+          <span class="glyphicon glyphicon-plus can-check" v-on:click="openAddModal(task_data)"></span>
+        </div>
+        <child-component
+          v-show="showSons"
+          :count="count+1"
+          v-for="item,id in task_data.sons"
+          :key="id"
+          :task_data="item">
+        </child-component>
+      </div>`
+  });
+  Vue.component('child-component-complate', {
+    name: 'child-component-complate',
+    delimiters: ['{[', ']}'],
+    data: function () {
+      return {showSons: true}
+    },
+    props: {
+      task_data: {
+        type: Object,
+        default: function () {
+          return {"name": "", sons: [],"nid":null}
+        }
+      },
+      count: {
+        type: Number,
+        default: 0,
+      },
+    },
+    methods: {
+      spaceCtrl: function (count) {
+        var s = ""
+        for (var i = 0; i <= count; i++)
+          s += '&nbsp&nbsp&nbsp&nbsp&nbsp'
+        return s
+      },
+    },
+    template: `\
+      <div class="child" >
+        <div>
+          <span v-html="spaceCtrl(count)"></span>
+          <span
+            v-if="task_data.sons.length>1"
+            class="glyphicon can-check"
+            :class="{'glyphicon-menu-down':showSons,'glyphicon-menu-right':!showSons}"
+            v-on:click="showSons=!showSons" >
+          </span>
+          <span v-else>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            {[task_data.name]}
+        </div>
+        <child-component-complate
+          v-show="showSons"
+          :count="count+1"
+          v-for="item,id in task_data.sons"
+          :key="id"
+          :task_data="item">
+        </child-component-complate>
+      </div>`
+  });
+  app = new Vue({
+    el: '#app',
+    data: {
+      todo_list: {},
+      complate_list:{},
+      editItem: {},
+      addItem: {},
+      addInput: '',
+    },
+    methods: {
+      get_task() {
+        axios({
+          method: 'get',
+          url: 'http://127.0.0.1:8888/api/v1/task',
+        }).then(function (res) {
+          app.$data.todo_list = res.data.todo
+          app.$data.complate_list = res.data.complate
+        });
+      },
+      update_task(nid, update_data) {
+        axios({
+          method: 'post',
+          url: 'http://127.0.0.1:8888/api/v1/task',
+          data: {
+            nid: nid,
+            newData: update_data
+          },
+        }).then(function (res) {
+          app.$data.todo_list = res.data.todo
+          app.$data.complate_list = res.data.complate
+        });
+      },
+      insert_task(father_id, update_data) {
+        axios({
+          method: 'post',
+          url: 'http://127.0.0.1:8888/api/v1/task',
+          data: {
+            father_id: father_id,
+            newData: update_data
+          },
+        }).then(function (res) {
+          app.$data.todo_list = res.data.todo
+          app.$data.complate_list = res.data.complate
+        });
+      },
+      editTask: function (item, name) {
+        app.update_task(item.nid, {'name': name})
+      },
+      addTask: function (item, name) {
+        console.log(item,name,12412412)
+        if(item){
+          var nid=item.nid
+        }
+        else {
+          nid = null
+        }
+        app.insert_task(nid, {'name': name})
+      },
+      openAddModal: function (item) {
+        $('#myModal_add').modal('show');
+        app.$data.addItem = item
+        console.log(item.name)
+      }
+    },
+    mounted: function () {
+      this.get_task();
+    }
+  })
+</script>
+</html>
